@@ -4,7 +4,7 @@
 
 #define X_SIZE 10
 #define Y_SIZE 18
-#define PIECE_DELAY 100
+#define PIECE_DELAY 500
 
 SDL_Texture* playerTex;
 SDL_Rect srcR, destR, staticPixel;
@@ -21,6 +21,79 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 int posMovingPieceX;
 int posMovingPieceY;
+int score;
+
+void removeLine(int y)
+{
+	int i,j;
+	for(j = y; j > 0; j--)
+		for(i = 0; i < X_SIZE; i++)
+			tm[i][j] = tm[i][j - 1];
+}
+
+void removeLines(int lines[PIECE_H]){
+	int i;
+	for(i = 0; i < PIECE_H; i++)
+		if(lines[i])
+			removeLine(lines[i]);
+}
+
+void scoring()
+{
+	int i,j;
+	int lines[PIECE_H] = {0, 0, 0, 0};
+	int cntLines = 0;
+	bool lineComplete = true;
+	for(j = 0; j < Y_SIZE; j++)
+	{
+		for(i = 0; i < X_SIZE; i++)
+		{
+			if(tm[i][j] == 0)
+			{
+				lineComplete=false;
+			}
+		}
+
+		if(lineComplete)
+		{
+			lines[cntLines++] = j;
+		}
+
+		lineComplete = true;
+	}
+
+	removeLines(lines);
+	score = score + cntLines * 100;
+	printf("score: %d\n", score);
+}
+
+void printMatrix(int arr[PIECE_H][PIECE_H])
+{
+	int i,j;
+	for(i=0; i < 4; i++){
+		for(j=0; j < 4; j++){
+			printf("%d ", arr[i][j]);
+		}
+		printf("\n");
+	}
+	printf("--end--\n");
+}
+
+void rotatePiece(int arr[PIECE_H][PIECE_H])
+{
+	int i, j, tmp;
+	for(i = 0; i < PIECE_H / 2; i++)
+		for(j = i; j < PIECE_H - 1 - i; j++)
+		{
+			//printf("%d %d\n", i, j);
+			tmp = arr[i][j];
+			arr[i][j] = arr[PIECE_H - 1 - j][i];
+			arr[PIECE_H - 1 - j][i] = arr[PIECE_H - 1 - i][PIECE_H - 1 - j];
+			arr[PIECE_H - 1 - i][PIECE_H - 1 - j] = arr[j][PIECE_H - 1 - i];
+			arr[j][PIECE_H - 1 - i] = tmp;
+		}
+
+}
 
 void assignNewPiece()
 {
@@ -29,9 +102,9 @@ void assignNewPiece()
 	printf("selectedPiece: %d\n", selectedPiece);
 
 	int i,j;
-	for(i = 0; i < PIECE_W; i++)
+	for(i = 0; i < PIECE_H; i++)
 		for(j = 0; j < PIECE_H; j++)
-			currentPiece[j][i] = pieces[selectedPiece][j][i];
+			currentPiece[j][i] = i < PIECE_H - 1 ? pieces[selectedPiece][j][i] : 0;
 }
 
 void initTetris()
@@ -42,9 +115,17 @@ void initTetris()
 			tm[i][j] = 0;
 
 	//tm[1][1] = 1;
-	tm[0][17] = 1;
-	tm[9][17] = 1;
+	//tm[0][17] = 1;
+	//tm[9][17] = 1;
+	//tm[9][0] = 1;
+	for(i = 0; i < X_SIZE - 1; i++){
+	tm[i][17] = 1;
+	tm[i][16] = 1;
+	tm[i][15] = 1;
+	tm[i][14] = 1;
+	}
 	assignNewPiece();
+	score = 0;
 }
 
 void init(const char* title, int width, int height, bool fullscreen)
@@ -77,8 +158,19 @@ void init(const char* title, int width, int height, bool fullscreen)
 	initTetris();
 }
 
-void xCollision()
+bool xCollision(int x)
 {
+	printf("x: %d\n", x);
+	int i,j;
+	for(i = 0; i < PIECE_W; i++)
+		for(j = 0; j < PIECE_H; j++)
+			if(currentPiece[j][i] == 1 &&
+					(j + x >= X_SIZE ||
+					 j + x < 0 ||
+					 currentPiece[j][i] == tm[j + x][i + cnt_y]))
+				return true;
+
+	return false;
 	
 }
 
@@ -100,18 +192,26 @@ void handleEvents()
 	if( event.type == SDL_KEYDOWN ){
 		switch( event.key.keysym.sym ){
 		    case SDLK_LEFT:
-			if(cnt_x > 0)
+			if(!xCollision(cnt_x - 1))
 			{
 				cnt_x--;
 			}
 		    	break;
 
                     case SDLK_RIGHT:
-			if(cnt_x < X_SIZE - 1)
+			if(!xCollision(cnt_x + 1))
 			{
 				cnt_x++;
 			}
                     	break;
+		    case SDLK_UP:
+			printMatrix(currentPiece);
+			rotatePiece(currentPiece);
+			printMatrix(currentPiece);
+			break;
+		    case SDLK_DOWN:
+			initTetris();
+			break;
 		}
 	}
 }
@@ -132,7 +232,7 @@ void checkColision()
 	}*/
 	bool collided = false;
 	int i,j;
-	for(i = 0; i < PIECE_W && collided == false; i++)
+	for(i = 0; i < PIECE_H && collided == false; i++)
 		for(j = 0; j < PIECE_H && collided == false; j++)
 		{
 			if(currentPiece[j][i] == tm[j + cnt_x][i + cnt_y] && currentPiece[j][i] == 1) 
@@ -152,7 +252,7 @@ void checkColision()
 		}
 
 	if(collided){
-		for(i = 0; i < PIECE_W; i++)
+		for(i = 0; i < PIECE_H; i++)
 			for(j = 0; j < PIECE_H; j++)
 				if(currentPiece[j][i] == 1){
 					printf("x: %d, y: %d\n", i + cnt_x, j + cnt_y - 1);
@@ -181,6 +281,7 @@ void update()
 	{
 		cnt_y++;
 		checkColision();
+		scoring();
 		posMovingPieceX = cnt_x * 16;
 		posMovingPieceY = cnt_y * 16;
 		pieceCnt = currentPieceCnt;
@@ -191,7 +292,7 @@ void update()
 void renderMovingPiece()
 {
 	int i,j;
-	for(i = 0; i < PIECE_W; i++)
+	for(i = 0; i < PIECE_H; i++)
 		for(j = 0; j < PIECE_H; j++)
 		{
 			if(currentPiece[j][i]){
