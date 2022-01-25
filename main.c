@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 	Uint32 frameStart;
 	int frameTime;
 
-	init("tetris", 800, 600, false);
+	init("tetris", 160 * 4, 144 * 4, false);
 
 	while (running())
 	{

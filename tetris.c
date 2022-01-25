@@ -1,18 +1,38 @@
 #include "tetris.h"
 #include "pieces.h"
 #include <stdlib.h>
+#include <math.h>
 
 #define X_SIZE 10
 #define Y_SIZE 18
-#define PIECE_DELAY 500
+#define WINDOW_W 1
+#define WINDOW_H 1
+#define PIECE_DELAY 400
+#define SCREEN_FACTOR 4
+#define PIXEL_ORIGINAL_SIZE 8
+#define SCREEN_POS_X 11
+#define SCREEN_POS_Y 0
+#define SCORE_NUMBER_POS_X 109
+#define SCORE_NUMBER_POS_Y 27
 
-SDL_Texture* playerTex;
-SDL_Rect srcR, destR, staticPixel;
+SDL_Texture* numbers;
+SDL_Texture* pixels;
+SDL_Texture* background;
+SDL_Rect srcR, destR, staticPixel, backgroundRect;
+SDL_Rect pixelRect, pixelTextureRect;
+//sound effects
+Mix_Chunk *ePiecesDown = NULL;
+Mix_Chunk *eRotate = NULL;
+Mix_Chunk *eScore = NULL;
+
 Uint32 pieceCnt = 0;
 int tm[X_SIZE][Y_SIZE];
 //large size to be able to rotate the piece
 int currentPiece[PIECE_H][PIECE_H];
-static int pixelSize = 16;
+
+static int pixelSize = SCREEN_FACTOR * PIXEL_ORIGINAL_SIZE;
+static int screenPosX = SCREEN_POS_X * SCREEN_FACTOR;
+static int screenPosY = SCREEN_POS_Y * SCREEN_FACTOR;
 
 bool isRunning = false;
 int cnt_y  = 0;
@@ -22,6 +42,39 @@ SDL_Renderer *renderer;
 int posMovingPieceX;
 int posMovingPieceY;
 int score;
+
+bool loadMedia()
+{
+	bool success = true;
+
+	if(Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
+	{
+		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+	}
+
+	ePiecesDown = Mix_LoadWAV("effects/ePiecesDown.wav");
+	if(ePiecesDown == NULL )
+	{	
+        	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
+		success = false;
+	}
+
+	eRotate = Mix_LoadWAV("effects/eRotate.wav");
+	if(eRotate == NULL )
+	{	
+        	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
+		success = false;
+	}
+
+	eScore = Mix_LoadWAV("effects/eScore.wav");
+	if(eScore == NULL )
+	{	
+        	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
+		success = false;
+	}
+
+	return success;
+}
 
 void removeLine(int y)
 {
@@ -44,6 +97,7 @@ void scoring()
 	int lines[PIECE_H] = {0, 0, 0, 0};
 	int cntLines = 0;
 	bool lineComplete = true;
+	bool scoreAdded = false;
 	for(j = 0; j < Y_SIZE; j++)
 	{
 		for(i = 0; i < X_SIZE; i++)
@@ -57,14 +111,19 @@ void scoring()
 		if(lineComplete)
 		{
 			lines[cntLines++] = j;
+			scoreAdded = true;
 		}
 
 		lineComplete = true;
 	}
 
-	removeLines(lines);
-	score = score + cntLines * 100;
-	printf("score: %d\n", score);
+	if(scoreAdded)
+	{
+		removeLines(lines);
+		score = score + cntLines * 100;
+		Mix_PlayChannel(-1, eScore, 0);
+		printf("score: %d\n", score);
+	}
 }
 
 void printMatrix(int arr[PIECE_H][PIECE_H])
@@ -149,12 +208,25 @@ void init(const char* title, int width, int height, bool fullscreen)
 		isRunning = true;
 	}
 
-	SDL_Surface* tmpSurface = IMG_Load("pixel.png");
-	playerTex = SDL_CreateTextureFromSurface(renderer, tmpSurface);
+	SDL_Surface* tmpSurface = IMG_Load("textures/numbers.png");
+	numbers = SDL_CreateTextureFromSurface(renderer, tmpSurface);
+	SDL_FreeSurface(tmpSurface);
+
+	tmpSurface = IMG_Load("textures/pixels.png");
+	pixels = SDL_CreateTextureFromSurface(renderer, tmpSurface);
+	SDL_FreeSurface(tmpSurface);
+
+	tmpSurface = IMG_Load("textures/background.png");
+	background = SDL_CreateTextureFromSurface(renderer, tmpSurface);
 	SDL_FreeSurface(tmpSurface);
 
 	pieceCnt = SDL_GetTicks();
 
+	backgroundRect.x = 0;
+	backgroundRect.y = 0;
+	backgroundRect.h = 144 * 4;
+	backgroundRect.w = 160 * 4;
+	loadMedia();
 	initTetris();
 }
 
@@ -207,40 +279,36 @@ void handleEvents()
 		    case SDLK_UP:
 			printMatrix(currentPiece);
 			rotatePiece(currentPiece);
+			Mix_PlayChannel(-1, eRotate, 0);
 			printMatrix(currentPiece);
 			break;
 		    case SDLK_DOWN:
+			int yPos = cnt_y + 1;
+			printf("=================\n");
+			while(!checkColision(yPos)){
+				yPos++;
+			}
+			break;
+		    case SDLK_SPACE:
 			initTetris();
 			break;
 		}
 	}
 }
 
-void checkColision()
+bool checkColision(int cnt_y_local)
 {
-	/*
-	if(cnt_y == Y_SIZE)
-	{
-		tm[cnt_x][cnt_y - 1] = 1; 
-		cnt_x = 5;
-		cnt_y = 0;
-	}
-	if(tm[cnt_x][cnt_y] == 1){
-		tm[cnt_x][cnt_y - 1] = 1; 
-		cnt_x = 5;
-		cnt_y = 0;
-	}*/
 	bool collided = false;
 	int i,j;
 	for(i = 0; i < PIECE_H && collided == false; i++)
 		for(j = 0; j < PIECE_H && collided == false; j++)
 		{
-			if(currentPiece[j][i] == tm[j + cnt_x][i + cnt_y] && currentPiece[j][i] == 1) 
+			if(currentPiece[j][i] == tm[j + cnt_x][i + cnt_y_local] && currentPiece[j][i] == 1) 
 			{
 				collided = true;
 			}
 
-			if(i + cnt_y == Y_SIZE && currentPiece[j][i] == 1)
+			if(i + cnt_y_local == Y_SIZE && currentPiece[j][i] == 1)
 			{
 				collided = true;
 			}
@@ -255,23 +323,25 @@ void checkColision()
 		for(i = 0; i < PIECE_H; i++)
 			for(j = 0; j < PIECE_H; j++)
 				if(currentPiece[j][i] == 1){
-					printf("x: %d, y: %d\n", i + cnt_x, j + cnt_y - 1);
-					tm[j + cnt_x][i + cnt_y - 1] = 1; 
+					printf("x: %d, y: %d\n", i + cnt_x, j + cnt_y_local - 1);
+					tm[j + cnt_x][i + cnt_y_local - 1] = 1; 
 				}
 		printf("--- end collision ---\n");
 		cnt_x = 5;
 		cnt_y = 0;
 		assignNewPiece();
+		Mix_PlayChannel(-1, ePiecesDown, 0);
 	}
 
+	return collided;
 }
 
 void update()
 {
-	destR.h = 16;
-	destR.w = 16;
-	staticPixel.h = 16;
-	staticPixel.w = 16;
+	destR.h = pixelSize;
+	destR.w = pixelSize;
+	staticPixel.h = pixelSize;
+	staticPixel.w = pixelSize;
 
 	//staticPixel.x = 20;
 	//staticPixel.y = 20;
@@ -280,10 +350,10 @@ void update()
 	if((currentPieceCnt - pieceCnt) > PIECE_DELAY)
 	{
 		cnt_y++;
-		checkColision();
+		checkColision(cnt_y);
 		scoring();
-		posMovingPieceX = cnt_x * 16;
-		posMovingPieceY = cnt_y * 16;
+		posMovingPieceX = cnt_x * pixelSize;
+		posMovingPieceY = cnt_y * pixelSize;
 		pieceCnt = currentPieceCnt;
 		//printf("%d\n", destR.y);
 	}
@@ -291,23 +361,65 @@ void update()
 
 void renderMovingPiece()
 {
+	pixelTextureRect.x = 0;
+	pixelTextureRect.y = 0;
+	pixelTextureRect.w = 8;
+	pixelTextureRect.h = 8;
+
 	int i,j;
 	for(i = 0; i < PIECE_H; i++)
 		for(j = 0; j < PIECE_H; j++)
 		{
 			if(currentPiece[j][i]){
-				destR.x = j * pixelSize + posMovingPieceX;
-				destR.y = i * pixelSize + posMovingPieceY;
-				SDL_RenderCopy(renderer, playerTex, NULL, &destR);
+				destR.x = j * pixelSize + posMovingPieceX + screenPosX;
+				destR.y = i * pixelSize + posMovingPieceY + screenPosY;
+				SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &destR);
+				//SDL_RenderCopy(renderer, pixel4, NULL, &destR);
 			}
 		}
 	
 }
 
+void renderNumbers(int scoreNumber)
+{
+	SDL_Rect numberSelectorRect, numberRect;
+	numberSelectorRect.w = 5;
+	numberSelectorRect.h = 7;
+
+	numberRect.w = 5 * SCREEN_FACTOR;
+	numberRect.h = 7 * SCREEN_FACTOR;
+	numberRect.y = SCORE_NUMBER_POS_Y * SCREEN_FACTOR;
+
+	int n = 4;
+	int posDigit = 5;
+	int res;
+	int tmpScore = scoreNumber;
+	while(n >= 0)
+	{
+		res = tmpScore / (pow(10, n));
+		tmpScore = tmpScore - res * pow(10, n);
+		numberSelectorRect.x = res * 5;
+		numberSelectorRect.y = 0;
+		numberRect.x = SCORE_NUMBER_POS_X * SCREEN_FACTOR + (posDigit - n - 1) * 6 * SCREEN_FACTOR;
+		SDL_RenderCopy(renderer, numbers, &numberSelectorRect, &numberRect);
+		n--;
+	}
+}
+
 void render()
 {
 	SDL_RenderClear(renderer);
-	//SDL_RenderCopy(renderer, playerTex, NULL, &destR);
+
+	
+	pixelTextureRect.x = 0;
+	pixelTextureRect.y = 0;
+	pixelTextureRect.w = 8;
+	pixelTextureRect.h = 8;
+	
+	SDL_RenderCopy(renderer, background, NULL, &backgroundRect);
+	
+	renderNumbers(score);
+
 	renderMovingPiece();
 
 	int i,j;
@@ -315,9 +427,9 @@ void render()
 		for(j = 0; j < Y_SIZE; j++)
 			if(tm[i][j])
 			{
-				staticPixel.x = i * pixelSize;
-				staticPixel.y = j * pixelSize;
-				SDL_RenderCopy(renderer, playerTex, NULL, &staticPixel);
+				staticPixel.x = i * pixelSize + screenPosX;
+				staticPixel.y = j * pixelSize + screenPosY;
+				SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &staticPixel);
 			}
 	SDL_RenderPresent(renderer);
 }
