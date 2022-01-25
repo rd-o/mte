@@ -52,21 +52,21 @@ bool loadMedia()
 		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
 	}
 
-	ePiecesDown = Mix_LoadWAV("effects/ePiecesDown.wav");
+	ePiecesDown = Mix_LoadWAV("assets/effects/ePiecesDown.wav");
 	if(ePiecesDown == NULL )
 	{	
         	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
 		success = false;
 	}
 
-	eRotate = Mix_LoadWAV("effects/eRotate.wav");
+	eRotate = Mix_LoadWAV("assets/effects/eRotate.wav");
 	if(eRotate == NULL )
 	{	
         	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
 		success = false;
 	}
 
-	eScore = Mix_LoadWAV("effects/eScore.wav");
+	eScore = Mix_LoadWAV("assets/effects/eScore.wav");
 	if(eScore == NULL )
 	{	
         	printf( "Failed to load sound effect! SDL_mixer Error: %s\n", Mix_GetError() );
@@ -187,36 +187,30 @@ void initTetris()
 	score = 0;
 }
 
-void init(const char* title, int width, int height, bool fullscreen)
+int init(const char* title, int width, int height, bool fullscreen)
 {
 	int flags = 0;
 	
-	if (fullscreen)
-	{
-		flags = SDL_WINDOW_FULLSCREEN;
+	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		return 1;
 	}
 
-	if (SDL_Init(SDL_INIT_EVERYTHING) == 0)
-	{
-		window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
-		renderer = SDL_CreateRenderer(window, -1, 0);
-		if (renderer)
-		{
-			SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-		}
+	SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_SHOWN, &window, &renderer);
+	isRunning = true;
 
-		isRunning = true;
-	}
-
-	SDL_Surface* tmpSurface = IMG_Load("textures/numbers.png");
+	SDL_Surface* tmpSurface = IMG_Load("assets/textures/numbers.png");
 	numbers = SDL_CreateTextureFromSurface(renderer, tmpSurface);
 	SDL_FreeSurface(tmpSurface);
 
-	tmpSurface = IMG_Load("textures/pixels.png");
+	tmpSurface = IMG_Load("assets/textures/pixels.png");
+	if(!tmpSurface) {
+		printf("IMG_Load: %s\n", IMG_GetError());
+	}
 	pixels = SDL_CreateTextureFromSurface(renderer, tmpSurface);
 	SDL_FreeSurface(tmpSurface);
 
-	tmpSurface = IMG_Load("textures/background.png");
+	tmpSurface = IMG_Load("assets/textures/background.png");
 	background = SDL_CreateTextureFromSurface(renderer, tmpSurface);
 	SDL_FreeSurface(tmpSurface);
 
@@ -228,6 +222,8 @@ void init(const char* title, int width, int height, bool fullscreen)
 	backgroundRect.w = 160 * 4;
 	loadMedia();
 	initTetris();
+
+	return 0;
 }
 
 bool xCollision(int x)
@@ -249,6 +245,7 @@ bool xCollision(int x)
 void handleEvents()
 {
 	SDL_Event event;
+	int yPos;
 
 	SDL_PollEvent(&event);
 
@@ -283,7 +280,7 @@ void handleEvents()
 			printMatrix(currentPiece);
 			break;
 		    case SDLK_DOWN:
-			int yPos = cnt_y + 1;
+			yPos = cnt_y + 1;
 			printf("=================\n");
 			while(!checkColision(yPos)){
 				yPos++;
@@ -343,19 +340,13 @@ void update()
 	staticPixel.h = pixelSize;
 	staticPixel.w = pixelSize;
 
-	//staticPixel.x = 20;
-	//staticPixel.y = 20;
-
 	Uint32 currentPieceCnt = SDL_GetTicks();
 	if((currentPieceCnt - pieceCnt) > PIECE_DELAY)
 	{
 		cnt_y++;
 		checkColision(cnt_y);
 		scoring();
-		posMovingPieceX = cnt_x * pixelSize;
-		posMovingPieceY = cnt_y * pixelSize;
 		pieceCnt = currentPieceCnt;
-		//printf("%d\n", destR.y);
 	}
 }
 
@@ -369,14 +360,12 @@ void renderMovingPiece()
 	int i,j;
 	for(i = 0; i < PIECE_H; i++)
 		for(j = 0; j < PIECE_H; j++)
-		{
-			if(currentPiece[j][i]){
-				destR.x = j * pixelSize + posMovingPieceX + screenPosX;
-				destR.y = i * pixelSize + posMovingPieceY + screenPosY;
+			if(currentPiece[j][i])
+			{
+				destR.x = j * pixelSize + cnt_x * pixelSize + screenPosX;
+				destR.y = i * pixelSize + cnt_y * pixelSize + screenPosY;
 				SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &destR);
-				//SDL_RenderCopy(renderer, pixel4, NULL, &destR);
 			}
-		}
 	
 }
 

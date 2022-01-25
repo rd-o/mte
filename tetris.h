@@ -6,10 +6,9 @@
 #include "SDL2/SDL_mixer.h"
 #include <stdbool.h>
 
-void init(const char* title, int width, int height, bool fullscreen);
+int init(const char* title, int width, int height, bool fullscreen);
 
-extern bool isRunning;// = false;
-//extern int cnt;// = 0;
+extern bool isRunning;
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 
