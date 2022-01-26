@@ -14,6 +14,19 @@
 #define SCREEN_POS_Y 0
 #define SCORE_NUMBER_POS_X 109
 #define SCORE_NUMBER_POS_Y 27
+#define LEVEL_NUMBER_POS_X 127
+#define LEVEL_NUMBER_POS_Y 50
+#define LINES_NUMBER_POS_X 109
+#define LINES_NUMBER_POS_Y 72
+#define SCORE_DIGITS 5
+#define LEVEL_DIGITS 2
+#define LINES_DIGITS 5
+
+int levelDelay[] = {887, 820, 753, 686, 619, 552, 469, 368, 285, 184, 167, 
+	151, 134, 117, 100, 100, 84, 84, 67, 67, 50};
+int pointsForLine[] = {40, 100,	300, 1200};
+int level;
+int lineCounter;
 
 SDL_Texture* numbers;
 SDL_Texture* pixels;
@@ -120,7 +133,26 @@ void scoring()
 	if(scoreAdded)
 	{
 		removeLines(lines);
-		score = score + cntLines * 100;
+		lineCounter = lineCounter + cntLines;
+		int points = pointsForLine[cntLines - 1] * (level + 1);
+
+		score = score + cntLines * points;
+
+		if(level <= 8)
+		{
+			if(lineCounter >= 10)
+			{
+				level++;
+				lineCounter = lineCounter - 10;
+			}
+		}else if(level > 8 && level <= 20)
+		{
+			if(lineCounter >= 20)
+			{
+				level++;
+				lineCounter = lineCounter - 20;
+			}
+		}
 		Mix_PlayChannel(-1, eScore, 0);
 		printf("score: %d\n", score);
 	}
@@ -173,10 +205,6 @@ void initTetris()
 		for(j = 0; j < Y_SIZE; j++)
 			tm[i][j] = 0;
 
-	//tm[1][1] = 1;
-	//tm[0][17] = 1;
-	//tm[9][17] = 1;
-	//tm[9][0] = 1;
 	for(i = 0; i < X_SIZE - 1; i++){
 	tm[i][17] = 1;
 	tm[i][16] = 1;
@@ -185,6 +213,8 @@ void initTetris()
 	}
 	assignNewPiece();
 	score = 0;
+	lineCounter = 0;
+	level = 0;
 }
 
 int init(const char* title, int width, int height, bool fullscreen)
@@ -341,7 +371,7 @@ void update()
 	staticPixel.w = pixelSize;
 
 	Uint32 currentPieceCnt = SDL_GetTicks();
-	if((currentPieceCnt - pieceCnt) > PIECE_DELAY)
+	if((currentPieceCnt - pieceCnt) > levelDelay[level])
 	{
 		cnt_y++;
 		checkColision(cnt_y);
@@ -369,7 +399,7 @@ void renderMovingPiece()
 	
 }
 
-void renderNumbers(int scoreNumber)
+void renderNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits)
 {
 	SDL_Rect numberSelectorRect, numberRect;
 	numberSelectorRect.w = 5;
@@ -377,19 +407,18 @@ void renderNumbers(int scoreNumber)
 
 	numberRect.w = 5 * SCREEN_FACTOR;
 	numberRect.h = 7 * SCREEN_FACTOR;
-	numberRect.y = SCORE_NUMBER_POS_Y * SCREEN_FACTOR;
+	numberRect.y = numberPosY * SCREEN_FACTOR;
 
-	int n = 4;
-	int posDigit = 5;
+	int n = numberOfDigits - 1;
 	int res;
-	int tmpScore = scoreNumber;
+	int tmpValue = value;
 	while(n >= 0)
 	{
-		res = tmpScore / (pow(10, n));
-		tmpScore = tmpScore - res * pow(10, n);
+		res = tmpValue / (pow(10, n));
+		tmpValue = tmpValue - res * pow(10, n);
 		numberSelectorRect.x = res * 5;
 		numberSelectorRect.y = 0;
-		numberRect.x = SCORE_NUMBER_POS_X * SCREEN_FACTOR + (posDigit - n - 1) * 6 * SCREEN_FACTOR;
+		numberRect.x = numberPosX * SCREEN_FACTOR + (numberOfDigits - n - 1) * 6 * SCREEN_FACTOR;
 		SDL_RenderCopy(renderer, numbers, &numberSelectorRect, &numberRect);
 		n--;
 	}
@@ -407,7 +436,9 @@ void render()
 	
 	SDL_RenderCopy(renderer, background, NULL, &backgroundRect);
 	
-	renderNumbers(score);
+	renderNumbers(score, SCORE_NUMBER_POS_X, SCORE_NUMBER_POS_Y, SCORE_DIGITS);
+	renderNumbers(level, LEVEL_NUMBER_POS_X, LEVEL_NUMBER_POS_Y, LEVEL_DIGITS);
+	renderNumbers(lineCounter, LINES_NUMBER_POS_X, LINES_NUMBER_POS_Y, LINES_DIGITS);
 
 	renderMovingPiece();
 
