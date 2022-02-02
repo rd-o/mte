@@ -27,6 +27,7 @@ int levelDelay[] = {887, 820, 753, 686, 619, 552, 469, 368, 285, 184, 167,
 int pointsForLine[] = {40, 100,	300, 1200};
 int level;
 int lineCounter;
+int lineCounterForLevel;
 
 SDL_Texture* numbers;
 SDL_Texture* pixels;
@@ -42,6 +43,8 @@ Uint32 pieceCnt = 0;
 int tm[X_SIZE][Y_SIZE];
 //large size to be able to rotate the piece
 int currentPiece[PIECE_H][PIECE_H];
+int nextPiece[PIECE_H][PIECE_H];
+int testRotatedPiece[PIECE_H][PIECE_H];
 
 static int pixelSize = SCREEN_FACTOR * PIXEL_ORIGINAL_SIZE;
 static int screenPosX = SCREEN_POS_X * SCREEN_FACTOR;
@@ -55,6 +58,7 @@ SDL_Renderer *renderer;
 int posMovingPieceX;
 int posMovingPieceY;
 int score;
+bool afterReset;
 
 bool loadMedia()
 {
@@ -133,24 +137,25 @@ void scoring()
 	if(scoreAdded)
 	{
 		removeLines(lines);
-		lineCounter = lineCounter + cntLines;
+		lineCounterForLevel = lineCounterForLevel + cntLines;
+		lineCounter = lineCounter + lineCounterForLevel;
 		int points = pointsForLine[cntLines - 1] * (level + 1);
 
 		score = score + cntLines * points;
 
 		if(level <= 8)
 		{
-			if(lineCounter >= 10)
+			if(lineCounterForLevel >= 10)
 			{
 				level++;
-				lineCounter = lineCounter - 10;
+				lineCounterForLevel = lineCounterForLevel - 10;
 			}
 		}else if(level > 8 && level <= 20)
 		{
-			if(lineCounter >= 20)
+			if(lineCounterForLevel >= 20)
 			{
 				level++;
-				lineCounter = lineCounter - 20;
+				lineCounterForLevel = lineCounterForLevel - 20;
 			}
 		}
 		Mix_PlayChannel(-1, eScore, 0);
@@ -186,35 +191,58 @@ void rotatePiece(int arr[PIECE_H][PIECE_H])
 
 }
 
-void assignNewPiece()
+void createNewPiece(int piece[PIECE_H][PIECE_H]) 
 {
 	int selectedPiece = random() % 7;
-
-	printf("selectedPiece: %d\n", selectedPiece);
 
 	int i,j;
 	for(i = 0; i < PIECE_H; i++)
 		for(j = 0; j < PIECE_H; j++)
-			currentPiece[j][i] = i < PIECE_H - 1 ? pieces[selectedPiece][j][i] : 0;
+			piece[j][i] = i < PIECE_H - 1 ? pieces[selectedPiece][j][i] : 0;
+
+}
+
+void assignNewPiece()
+{
+	if(afterReset)
+	{
+		createNewPiece(currentPiece);
+		createNewPiece(nextPiece);
+		afterReset = false;
+	}else
+	{
+		memcpy(currentPiece, nextPiece, PIECE_H * PIECE_H * sizeof(int));
+		createNewPiece(nextPiece);
+	}
+}
+
+void terminateGame(){
+	int i, j;
+
+	for(j = Y_SIZE - 1; j >= 0; j--)
+	{
+		for(i = 0; i < X_SIZE; i++){
+			tm[i][j] = 1;
+		}
+		SDL_Delay(30);
+		render();
+	}
+	SDL_Delay(200);
 }
 
 void initTetris()
 {
 	int i, j;
+
 	for(i = 0; i < X_SIZE; i++)
 		for(j = 0; j < Y_SIZE; j++)
 			tm[i][j] = 0;
 
-	for(i = 0; i < X_SIZE - 1; i++){
-	tm[i][17] = 1;
-	tm[i][16] = 1;
-	tm[i][15] = 1;
-	tm[i][14] = 1;
-	}
-	assignNewPiece();
 	score = 0;
 	lineCounter = 0;
 	level = 0;
+	afterReset = true;
+	assignNewPiece();
 }
 
 int init(const char* title, int width, int height, bool fullscreen)
@@ -256,16 +284,16 @@ int init(const char* title, int width, int height, bool fullscreen)
 	return 0;
 }
 
-bool xCollision(int x)
+bool xCollision(int x, int piece[PIECE_H][PIECE_H])
 {
 	printf("x: %d\n", x);
 	int i,j;
 	for(i = 0; i < PIECE_W; i++)
 		for(j = 0; j < PIECE_H; j++)
-			if(currentPiece[j][i] == 1 &&
+			if(piece[j][i] == 1 &&
 					(j + x >= X_SIZE ||
 					 j + x < 0 ||
-					 currentPiece[j][i] == tm[j + x][i + cnt_y]))
+					 piece[j][i] == tm[j + x][i + cnt_y]))
 				return true;
 
 	return false;
@@ -291,23 +319,26 @@ void handleEvents()
 	if( event.type == SDL_KEYDOWN ){
 		switch( event.key.keysym.sym ){
 		    case SDLK_LEFT:
-			if(!xCollision(cnt_x - 1))
+			if(!xCollision(cnt_x - 1, currentPiece))
 			{
 				cnt_x--;
 			}
 		    	break;
 
                     case SDLK_RIGHT:
-			if(!xCollision(cnt_x + 1))
+			if(!xCollision(cnt_x + 1, currentPiece))
 			{
 				cnt_x++;
 			}
                     	break;
 		    case SDLK_UP:
-			printMatrix(currentPiece);
-			rotatePiece(currentPiece);
-			Mix_PlayChannel(-1, eRotate, 0);
-			printMatrix(currentPiece);
+			memcpy(testRotatedPiece, currentPiece, PIECE_H * PIECE_H * sizeof(int));
+			rotatePiece(testRotatedPiece);
+			if(!xCollision(cnt_x, testRotatedPiece))
+			{
+				memcpy(currentPiece, testRotatedPiece, PIECE_H * PIECE_H * sizeof(int));
+				Mix_PlayChannel(-1, eRotate, 0);
+			}
 			break;
 		    case SDLK_DOWN:
 			yPos = cnt_y + 1;
@@ -352,6 +383,12 @@ bool checkColision(int cnt_y_local)
 				if(currentPiece[j][i] == 1){
 					printf("x: %d, y: %d\n", i + cnt_x, j + cnt_y_local - 1);
 					tm[j + cnt_x][i + cnt_y_local - 1] = 1; 
+					if(i + cnt_y_local - 1 < 2)
+					{
+						terminateGame();
+						initTetris();
+						return collided;
+					}
 				}
 		printf("--- end collision ---\n");
 		cnt_x = 5;
@@ -370,12 +407,12 @@ void update()
 	staticPixel.h = pixelSize;
 	staticPixel.w = pixelSize;
 
+	scoring();
 	Uint32 currentPieceCnt = SDL_GetTicks();
 	if((currentPieceCnt - pieceCnt) > levelDelay[level])
 	{
 		cnt_y++;
 		checkColision(cnt_y);
-		scoring();
 		pieceCnt = currentPieceCnt;
 	}
 }
@@ -396,7 +433,6 @@ void renderMovingPiece()
 				destR.y = i * pixelSize + cnt_y * pixelSize + screenPosY;
 				SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &destR);
 			}
-	
 }
 
 void renderNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits)
@@ -424,10 +460,27 @@ void renderNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits
 	}
 }
 
+void renderNextPiece()
+{
+	pixelTextureRect.x = 0;
+	pixelTextureRect.y = 0;
+	pixelTextureRect.w = 8;
+	pixelTextureRect.h = 8;
+
+	int i,j;
+	for(i = 0; i < PIECE_H; i++)
+		for(j = 0; j < PIECE_H; j++)
+			if(nextPiece[j][i])
+			{
+				destR.x = pixelSize * j + 109 * SCREEN_FACTOR;
+				destR.y = pixelSize * i + 93 * SCREEN_FACTOR;
+				SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &destR);
+			}
+}
+
 void render()
 {
 	SDL_RenderClear(renderer);
-
 	
 	pixelTextureRect.x = 0;
 	pixelTextureRect.y = 0;
@@ -439,6 +492,7 @@ void render()
 	renderNumbers(score, SCORE_NUMBER_POS_X, SCORE_NUMBER_POS_Y, SCORE_DIGITS);
 	renderNumbers(level, LEVEL_NUMBER_POS_X, LEVEL_NUMBER_POS_Y, LEVEL_DIGITS);
 	renderNumbers(lineCounter, LINES_NUMBER_POS_X, LINES_NUMBER_POS_Y, LINES_DIGITS);
+	renderNextPiece();
 
 	renderMovingPiece();
 

@@ -24,3 +24,7 @@ all : $(OBJS)
 
 wasm : $(OBJS)
 	$(EMCC) -O3 --closure 1 -s USE_SDL=2 -lSDL -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png"]' -s USE_SDL_MIXER=2 -s SDL2_MIXER_FORMATS='["wav"]' -s ALLOW_MEMORY_GROWTH=1 -s WASM=2 --preload-file assets $(FLAGS) $(OBJS) -o wasm_out/$(TITLE).html
+#	$(EMCC) --shell-file html/tetris_minimal.html -O3 --closure 1 -s USE_SDL=2 -lSDL -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png"]' -s USE_SDL_MIXER=2 -s SDL2_MIXER_FORMATS='["wav"]' -s ALLOW_MEMORY_GROWTH=1 -s WASM=2 --preload-file assets $(FLAGS) $(OBJS) -o wasm_out/$(TITLE).html
+
+run-wasm:
+	python3 -m http.server
