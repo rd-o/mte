@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.c tetris.c pieces.c
+OBJS = main.c pieces.c sdl_display.c tetris.c
 
 #CC specifies which compiler we're using
 CC = gcc

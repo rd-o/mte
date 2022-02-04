@@ -1,16 +1,7 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_image.h"
-#include "SDL2/SDL_mixer.h"
-#include <stdbool.h>
-
-int init(const char* title, int width, int height, bool fullscreen);
-
-extern bool isRunning;
-extern SDL_Window *window;
-extern SDL_Renderer *renderer;
+#include "sdl_display.h"
 
 void handleEvents();
 void update();
@@ -18,5 +9,6 @@ bool running();
 void render();
 void clean();
 bool checkColision(int cnt_y_local);
+void initTetris();
 
 #endif

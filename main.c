@@ -19,7 +19,7 @@ void mainGameLoop(){
 
 	if(frameDelay > frameTime)
 	{
-		SDL_Delay(frameDelay - frameTime);
+		delay(frameDelay - frameTime);
 	}
 }
 
@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
 	{
 		return 0;
 	}
+	initTetris();
 
 
 	#ifdef __EMSCRIPTEN__
