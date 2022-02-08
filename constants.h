@@ -6,10 +6,6 @@
 #define WINDOW_W 1
 #define WINDOW_H 1
 #define PIECE_DELAY 400
-#define SCREEN_FACTOR 4
-#define PIXEL_ORIGINAL_SIZE 8
-#define SCREEN_POS_X 11
-#define SCREEN_POS_Y 0
 #define SCORE_NUMBER_POS_X 109
 #define SCORE_NUMBER_POS_Y 27
 #define LEVEL_NUMBER_POS_X 127
@@ -19,5 +15,20 @@
 #define SCORE_DIGITS 5
 #define LEVEL_DIGITS 2
 #define LINES_DIGITS 5
+
+
+#ifdef __ARDUINO_TETRIS__
+#define SCREEN_FACTOR 1
+#define PIXEL_ORIGINAL_SIZE 3
+#define SCREEN_POS_X 0
+#define SCREEN_POS_Y 0
+#endif
+
+#ifndef __ARDUINO_TETRIS__
+#define SCREEN_FACTOR 4
+#define PIXEL_ORIGINAL_SIZE 8
+#define SCREEN_POS_X 11
+#define SCREEN_POS_Y 0
+#endif
 
 #endif

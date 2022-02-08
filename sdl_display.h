@@ -1,3 +1,4 @@
+#ifndef __ARDUINO_TETRIS__
 #ifndef SDL_DISPLAY_H
 #define SDL_DISPLAY_H
 
@@ -12,20 +13,33 @@
 
 extern bool isRunning;
 extern int pixelSize;
-
-int init(const char* title, int width, int height, bool fullscreen);
-void delay(Uint32 ms);
-void playEScore();
-void playERotate();
-void playEPiecesDown();
-
-extern SDL_Window *window;
-extern SDL_Renderer *renderer;
-
 struct PixelLoc {
 	int x;
 	int y;
 };
 
+int initDisplay(const char* title, int width, int height, bool fullscreen);
+void delayMs(Uint32 ms);
+void playEScore();
+void playERotate();
+void playEPiecesDown();
+Uint32 getTicks();
+void handlePlatformEvents(void (*onLeftKey)(),
+		void (*onRightKey)(),
+		void (*onUpKey)(),
+		void (*onDownKey)(),
+		void (*onSpaceKey)());
+void renderPixels(struct PixelLoc pixelLoc);
+void renderGraphicNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits);
+void renderClear();
+void cleanDisplay();
+void renderBackground();
+void renderPresent();
+
+extern SDL_Window *window;
+extern SDL_Renderer *renderer;
+
+
+#endif
 #endif
 

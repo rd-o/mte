@@ -27,6 +27,28 @@ int posMovingPieceY;
 int score;
 bool afterReset;
 
+const int FPS = 60;
+const int frameDelay = 1000 / FPS;
+
+void mainGameLoop(){
+	Uint32 frameStart;
+	int frameTime;
+
+	frameStart = getTicks();
+
+	handleEvents();
+	update();
+	render();
+
+	frameTime = getTicks() - frameStart;
+
+	if(frameDelay > frameTime)
+	{
+		delayMs(frameDelay - frameTime);
+	}
+}
+
+
 void removeLine(int y)
 {
 	int i,j;
@@ -93,10 +115,13 @@ void scoring()
 			}
 		}
 		playEScore();
+		#ifndef __ARDUINO_TETRIS__
 		printf("score: %d\n", score);
+		#endif
 	}
 }
 
+#ifndef __ARDUINO_TETRIS__
 void printMatrix(int arr[PIECE_H][PIECE_H])
 {
 	int i,j;
@@ -108,6 +133,7 @@ void printMatrix(int arr[PIECE_H][PIECE_H])
 	}
 	printf("--end--\n");
 }
+#endif
 
 void rotatePiece(int arr[PIECE_H][PIECE_H])
 {
@@ -158,16 +184,20 @@ void terminateGame(){
 		for(i = 0; i < X_SIZE; i++){
 			tm[i][j] = 1;
 		}
-		delay(30);
+		delayMs(30);
 		render();
 	}
-	delay(200);
+	delayMs(200);
 }
 
 void initTetris()
 {
 	int i, j;
 	pieceCnt = getTicks();
+	if(initDisplay("tetris", 160 * 4, 144 * 4, false) == 1)
+	{
+		return;
+	}
 
 	for(i = 0; i < X_SIZE; i++)
 		for(j = 0; j < Y_SIZE; j++)
@@ -183,7 +213,9 @@ void initTetris()
 
 bool xCollision(int x, int piece[PIECE_H][PIECE_H])
 {
+	#ifndef __ARDUINO_TETRIS__
 	printf("x: %d\n", x);
+	#endif
 	int i,j;
 	for(i = 0; i < PIECE_W; i++)
 		for(j = 0; j < PIECE_H; j++)
@@ -270,7 +302,9 @@ bool checkColision(int cnt_y_local)
 		for(i = 0; i < PIECE_H; i++)
 			for(j = 0; j < PIECE_H; j++)
 				if(currentPiece[j][i] == 1){
+					#ifndef __ARDUINO_TETRIS__
 					printf("x: %d, y: %d\n", i + cnt_x, j + cnt_y_local - 1);
+					#endif
 					tm[j + cnt_x][i + cnt_y_local - 1] = 1; 
 					if(i + cnt_y_local - 1 < 2)
 					{
@@ -279,7 +313,9 @@ bool checkColision(int cnt_y_local)
 						return collided;
 					}
 				}
+		#ifndef __ARDUINO_TETRIS__
 		printf("--- end collision ---\n");
+		#endif
 		cnt_x = 5;
 		cnt_y = 0;
 		assignNewPiece();

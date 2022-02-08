@@ -1,3 +1,4 @@
+#ifndef __ARDUINO_TETRIS__
 #include "sdl_display.h"
 
 bool isRunning = false;
@@ -48,7 +49,7 @@ bool loadMedia()
 	return success;
 }
 
-int init(const char* title, int width, int height, bool fullscreen)
+int initDisplay(const char* title, int width, int height, bool fullscreen)
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
@@ -88,7 +89,7 @@ int init(const char* title, int width, int height, bool fullscreen)
 	return 0;
 }
 
-void delay(Uint32 ms)
+void delayMs(Uint32 ms)
 {
 	SDL_Delay(ms);
 }
@@ -120,7 +121,8 @@ void renderPixels(struct PixelLoc pixelLoc)
 	SDL_RenderCopy(renderer, pixels, &pixelTextureRect, &destR);
 }
 
-void renderGraphicNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits){
+void renderGraphicNumbers(int value, int numberPosX, int numberPosY, int numberOfDigits)
+{
 	SDL_Rect numberSelectorRect, numberRect;
 	numberSelectorRect.w = 5;
 	numberSelectorRect.h = 7;
@@ -149,7 +151,8 @@ void renderClear()
 	SDL_RenderClear(renderer);
 }
 
-void renderBackground(){
+void renderBackground()
+{
 	SDL_RenderCopy(renderer, background, NULL, &backgroundRect);
 }
 
@@ -210,3 +213,4 @@ void cleanDisplay()
 	SDL_DestroyRenderer(renderer);
 	SDL_Quit();
 }
+#endif

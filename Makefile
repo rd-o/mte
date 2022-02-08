@@ -1,8 +1,8 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.c pieces.c sdl_display.c tetris.c
+OBJS = main.c pieces.cpp sdl_display.c tetris.cpp
 
 #CC specifies which compiler we're using
-CC = gcc
+CC = g++
 
 EMCC = /usr/lib/emscripten/emcc
 TITLE=tetris
